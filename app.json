@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Foundever",
+    "slug": "foundever",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./public/autopilot-logo-new.png",
+    "scheme": "foundever",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./public/loader-icon.jpg",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1214"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.foundever.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./public/autopilot-logo-new.png",
+        "backgroundColor": "#0B1214"
+      },
+      "package": "com.foundever.mobile"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./public/autopilot-logo-new.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
