@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import {
   View,
@@ -6,18 +6,104 @@ import {
   StyleSheet,
   ImageBackground,
   Image,
-  TouchableOpacity,
+  Pressable,
   SafeAreaView,
   Platform,
   StatusBar,
   Dimensions,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { springs } from '@/animations/reanimated-presets';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function LandingScreen() {
   const router = useRouter();
+
+  // Animation values
+  const logoOpacity = useSharedValue(0);
+  const logoScale = useSharedValue(0.8);
+  const loginX = useSharedValue(30);
+  const loginOpacity = useSharedValue(0);
+  const headingY = useSharedValue(40);
+  const headingOpacity = useSharedValue(0);
+  const subtitleX = useSharedValue(-30);
+  const subtitleOpacity = useSharedValue(0);
+  const lineScaleY = useSharedValue(0);
+  const buttonY = useSharedValue(30);
+  const buttonOpacity = useSharedValue(0);
+  const buttonScale = useSharedValue(1);
+  const arrowX = useSharedValue(0);
+
+  useEffect(() => {
+    // Staggered entrance animations
+    logoOpacity.value = withTiming(1, { duration: 400 });
+    logoScale.value = withSpring(1, springs.smooth);
+    loginX.value = withDelay(300, withSpring(0, springs.smooth));
+    loginOpacity.value = withDelay(300, withTiming(1, { duration: 400 }));
+    headingY.value = withDelay(400, withSpring(0, springs.smooth));
+    headingOpacity.value = withDelay(400, withTiming(1, { duration: 500 }));
+    subtitleX.value = withDelay(550, withSpring(0, springs.smooth));
+    subtitleOpacity.value = withDelay(550, withTiming(1, { duration: 400 }));
+    lineScaleY.value = withDelay(700, withSpring(1, springs.bouncy));
+    buttonY.value = withDelay(650, withSpring(0, springs.smooth));
+    buttonOpacity.value = withDelay(650, withTiming(1, { duration: 400 }));
+  }, []);
+
+  const logoStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.value,
+    transform: [{ scale: logoScale.value }],
+  }));
+
+  const loginStyle = useAnimatedStyle(() => ({
+    opacity: loginOpacity.value,
+    transform: [{ translateX: loginX.value }],
+  }));
+
+  const headingStyle = useAnimatedStyle(() => ({
+    opacity: headingOpacity.value,
+    transform: [{ translateY: headingY.value }],
+  }));
+
+  const subtitleStyle = useAnimatedStyle(() => ({
+    opacity: subtitleOpacity.value,
+    transform: [{ translateX: subtitleX.value }],
+  }));
+
+  const lineStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: lineScaleY.value }],
+  }));
+
+  const buttonStyle = useAnimatedStyle(() => ({
+    opacity: buttonOpacity.value,
+    transform: [
+      { translateY: buttonY.value },
+      { scale: buttonScale.value },
+    ],
+  }));
+
+  const arrowStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: arrowX.value }],
+  }));
+
+  const handleButtonPressIn = () => {
+    buttonScale.value = withSpring(0.97, springs.bouncy);
+    arrowX.value = withSpring(5, springs.bouncy);
+  };
+
+  const handleButtonPressOut = () => {
+    buttonScale.value = withSpring(1, springs.bouncy);
+    arrowX.value = withSpring(0, springs.bouncy);
+  };
+
+  const handleLoginPressIn = () => {
+    buttonScale.value = withSpring(0.95, springs.bouncy);
+  };
+
+  const handleLoginPressOut = () => {
+    buttonScale.value = withSpring(1, springs.bouncy);
+  };
 
   return (
     <View style={styles.container}>
@@ -27,11 +113,7 @@ export default function LandingScreen() {
         style={styles.backgroundImage}
         resizeMode="cover"
       >
-        {/*
-         * TOP gradient — cinematic dark vignette from the top edge.
-         * Covers ~35% of screen height for a smooth, premium look.
-         * Uses 8 color stops with eased opacity for buttery transitions.
-         */}
+        {/* Top gradient */}
         <LinearGradient
           colors={[
             'rgba(5,12,14,0.85)',
@@ -47,11 +129,7 @@ export default function LandingScreen() {
           style={styles.topGradient}
         />
 
-        {/*
-         * BOTTOM gradient — deep scrim rising from the base.
-         * Covers ~50% of screen height for maximum text readability.
-         * Heavier opacity at base blends seamlessly into container bg.
-         */}
+        {/* Bottom gradient */}
         <LinearGradient
           colors={[
             'transparent',
@@ -71,30 +149,54 @@ export default function LandingScreen() {
         <SafeAreaView style={styles.safeArea}>
           {/* ── Header ── */}
           <View style={styles.header}>
-            <Image
-              source={require('../public/autopilot-logo-new.png')}
-              style={styles.logo}
-              resizeMode="contain"
-              tintColor="#FFFFFF"
-            />
-            <TouchableOpacity
-              style={styles.loginBtn}
-              onPress={() => router.push('/(auth)/login')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.loginBtnText}>LOG IN</Text>
-            </TouchableOpacity>
+            <Animated.View style={logoStyle}>
+              <Image
+                source={require('../public/autopilot-logo-new.png')}
+                style={styles.logo}
+                resizeMode="contain"
+                tintColor="#FFFFFF"
+              />
+            </Animated.View>
+            
+            <Animated.View style={loginStyle}>
+              <Pressable
+                onPress={() => router.push('/(auth)/login')}
+                onPressIn={handleLoginPressIn}
+                onPressOut={handleLoginPressOut}
+              >
+                <Animated.View style={[styles.loginBtn, buttonScale]} >
+                  <Text style={styles.loginBtnText}>LOG IN</Text>
+                </Animated.View>
+              </Pressable>
+            </Animated.View>
           </View>
 
           {/* ── Bottom Content ── */}
           <View style={styles.bottomContent}>
-            <Text style={styles.heading}>
+            <Animated.Text style={[styles.heading, headingStyle]}>
               Where Autonomy Meets{'\n'}Operations.
-            </Text>
-            <View style={styles.subtitleRow}>
-              <View style={styles.verticalLine} />
+            </Animated.Text>
+            
+            <Animated.View style={[styles.subtitleRow, subtitleStyle]}>
+              <Animated.View style={[styles.verticalLine, lineStyle]} />
               <Text style={styles.subtitleText}>The building is the interface.</Text>
-            </View>
+            </Animated.View>
+
+            {/* Get Started Button */}
+            <Animated.View style={[{ marginTop: 32 }, buttonStyle]}>
+              <Pressable
+                onPress={() => router.push('/(auth)/login')}
+                onPressIn={handleButtonPressIn}
+                onPressOut={handleButtonPressOut}
+              >
+                <View style={styles.getStartedBtn}>
+                  <Text style={styles.getStartedText}>Get Started</Text>
+                  <Animated.View style={arrowStyle}>
+                    <Text style={styles.arrow}> →</Text>
+                  </Animated.View>
+                </View>
+              </Pressable>
+            </Animated.View>
           </View>
         </SafeAreaView>
       </ImageBackground>
@@ -193,5 +295,23 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
+  },
+  getStartedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#708F96',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  getStartedText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  arrow: {
+    color: '#FFFFFF',
+    fontSize: 18,
   },
 });

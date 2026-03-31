@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  View, Text, TextInput, Pressable, StyleSheet,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors } from '@/theme/colors';
 import { Spacing, Radius, Typography, Shadows } from '@/theme/theme';
+import { springs } from '@/animations/reanimated-presets';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -17,6 +19,58 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Animation values
+  const logoScale = useSharedValue(0);
+  const logoRotate = useSharedValue('-180deg');
+  const titleOpacity = useSharedValue(0);
+  const titleX = useSharedValue(-20);
+  const subtitleOpacity = useSharedValue(0);
+  const cardY = useSharedValue(50);
+  const cardOpacity = useSharedValue(0);
+  const footerOpacity = useSharedValue(0);
+  const buttonScale = useSharedValue(1);
+
+  useEffect(() => {
+    // Staggered entrance animations
+    logoScale.value = withDelay(200, withSpring(1, springs.bouncy));
+    logoRotate.value = withDelay(200, withSpring('0deg', springs.bouncy));
+    titleOpacity.value = withDelay(300, withTiming(1, { duration: 400 }));
+    titleX.value = withDelay(300, withSpring(0, springs.smooth));
+    subtitleOpacity.value = withDelay(400, withTiming(1, { duration: 400 }));
+    cardY.value = withDelay(250, withSpring(0, springs.smooth));
+    cardOpacity.value = withDelay(250, withTiming(1, { duration: 400 }));
+    footerOpacity.value = withDelay(700, withTiming(1, { duration: 400 }));
+  }, []);
+
+  const logoStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: logoScale.value },
+      { rotate: logoRotate.value },
+    ],
+  }));
+
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [{ translateX: titleX.value }],
+  }));
+
+  const subtitleStyle = useAnimatedStyle(() => ({
+    opacity: subtitleOpacity.value,
+  }));
+
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: cardOpacity.value,
+    transform: [{ translateY: cardY.value }],
+  }));
+
+  const footerStyle = useAnimatedStyle(() => ({
+    opacity: footerOpacity.value,
+  }));
+
+  const buttonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -35,6 +89,14 @@ export default function LoginScreen() {
     }
   };
 
+  const handlePressIn = () => {
+    buttonScale.value = withSpring(0.95, springs.bouncy);
+  };
+
+  const handlePressOut = () => {
+    buttonScale.value = withSpring(1, springs.bouncy);
+  };
+
   const isDark = theme === 'dark';
 
   return (
@@ -45,26 +107,29 @@ export default function LoginScreen() {
       <View style={styles.inner}>
         {/* Logo / Brand */}
         <View style={styles.brandSection}>
-          <View style={[styles.logoCircle, { backgroundColor: Colors.primary }]}>
+          <Animated.View style={[styles.logoCircle, { backgroundColor: Colors.primary }, logoStyle]}>
             <Text style={styles.logoText}>FE</Text>
-          </View>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
+          </Animated.View>
+          <Animated.Text style={[styles.title, { color: colors.textPrimary }, titleStyle]}>
             Foundever
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          </Animated.Text>
+          <Animated.Text style={[styles.subtitle, { color: colors.textSecondary }, subtitleStyle]}>
             Tenant Portal
-          </Text>
+          </Animated.Text>
         </View>
 
         {/* Login Card */}
-        <View style={[
-          styles.card,
-          {
-            backgroundColor: isDark ? 'rgba(20, 26, 34, 0.55)' : 'rgba(255, 255, 255, 0.85)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-          },
-          isDark ? Shadows.lg : Shadows.glass,
-        ]}>
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              backgroundColor: isDark ? 'rgba(20, 26, 34, 0.55)' : 'rgba(255, 255, 255, 0.85)',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+            },
+            isDark ? Shadows.lg : Shadows.glass,
+            cardStyle,
+          ]}
+        >
           {error ? (
             <View style={styles.errorBanner}>
               <Text style={styles.errorText}>{error}</Text>
@@ -85,6 +150,7 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            autoFocus
           />
 
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
@@ -101,23 +167,31 @@ export default function LoginScreen() {
             secureTextEntry
           />
 
-          <TouchableOpacity
-            style={[styles.loginButton, { opacity: loading ? 0.7 : 1 }]}
+          <Pressable
             onPress={handleLogin}
             disabled={loading}
-            activeOpacity={0.85}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.loginButtonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+            <Animated.View
+              style={[
+                styles.loginButton,
+                { backgroundColor: loading ? `${Colors.primary}80` : Colors.primary },
+                buttonStyle,
+              ]}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.loginButtonText}>Sign In</Text>
+              )}
+            </Animated.View>
+          </Pressable>
+        </Animated.View>
 
-        <Text style={[styles.footerText, { color: colors.textTertiary }]}>
+        <Animated.Text style={[styles.footerText, { color: colors.textTertiary }, footerStyle]}>
           Contact your property admin for access
-        </Text>
+        </Animated.Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -188,7 +262,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   loginButton: {
-    backgroundColor: Colors.primary,
     borderRadius: Radius.md,
     paddingVertical: 16,
     alignItems: 'center',

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image,
+  Animated,
 } from 'react-native';
+import { resolveClassification } from '@/lib/ai';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -37,6 +39,97 @@ export default function NewRequestScreen() {
   const [priority, setPriority] = useState('medium');
   const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // AI Classification state
+  const [aiThinking, setAiThinking] = useState(false);
+  const [aiPulseAnim] = useState(new Animated.Value(1));
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastClassifiedText = useRef('');
+
+  // Map AI category to UI category
+  const mapAiCategoryToUi = (aiCategory: string): string => {
+    const mapping: Record<string, string> = {
+      'plumbing': 'Plumbing',
+      'technical': 'Electrical',
+      'vendor': 'General',
+      'soft_services': 'Cleaning',
+      'fire_safety': 'Security',
+      'elevator_emergency': 'Elevator',
+      'hvac': 'HVAC',
+      'it_support': 'General',
+      'access_control': 'Security',
+      'cleaning': 'Cleaning',
+      'maintenance': 'General',
+    };
+    return mapping[aiCategory.toLowerCase()] || 'General';
+  };
+
+  // AI pulse animation
+  useEffect(() => {
+    if (aiThinking) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(aiPulseAnim, {
+            toValue: 1.3,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(aiPulseAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      aiPulseAnim.setValue(1);
+    }
+  }, [aiThinking]);
+
+  // Debounced AI classification when description changes
+  const classifyDescription = useCallback(async (text: string) => {
+    if (!text.trim() || text.trim().length < 10) return;
+    if (text.trim() === lastClassifiedText.current) return;
+    
+    lastClassifiedText.current = text.trim();
+    setAiThinking(true);
+    
+    try {
+      const result = await resolveClassification(text, title);
+      
+      // Auto-populate category if not already selected
+      if (!category) {
+        const mappedCategory = mapAiCategoryToUi(result.category);
+        setCategory(mappedCategory);
+      }
+      
+      // Auto-populate priority based on AI result
+      setPriority(result.priority);
+    } catch (err) {
+      console.warn('AI classification failed:', err);
+    } finally {
+      setAiThinking(false);
+    }
+  }, [title, category]);
+
+  // Debounced effect for description changes
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    debounceTimerRef.current = setTimeout(() => {
+      if (description.trim().length >= 10) {
+        classifyDescription(description);
+      }
+    }, 800);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [description, classifyDescription]);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -175,6 +268,18 @@ export default function NewRequestScreen() {
             numberOfLines={4}
             textAlignVertical="top"
           />
+
+          {/* AI Thinking Indicator */}
+          {aiThinking && (
+            <View style={[styles.aiThinkingContainer, { backgroundColor: `${Colors.primary}10` }]}>
+              <Animated.View style={[styles.aiPulseDot, { transform: [{ scale: aiPulseAnim }] }]}>
+                <Ionicons name="sparkles" size={16} color={Colors.primary} />
+              </Animated.View>
+              <Text style={[styles.aiThinkingText, { color: Colors.primary }]}>
+                AI is analyzing your request...
+              </Text>
+            </View>
+          )}
 
           {/* Category */}
           <Text style={[styles.label, { color: colors.textSecondary }]}>Category *</Text>
@@ -396,5 +501,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     ...Typography.titleMedium,
     fontWeight: '600',
+  },
+  aiThinkingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+    marginBottom: Spacing.md,
+    gap: 8,
+  },
+  aiPulseDot: {
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiThinkingText: {
+    ...Typography.labelMedium,
+    fontWeight: '500',
   },
 });
